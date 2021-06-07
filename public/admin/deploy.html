@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Deploy Classes</title>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <header>
+            <h1>OWNER</h1>
+            <div id="owner"></div>
+        </header>
+        <div class="jigclass">
+            <h3>BasicJig</h3>
+            <button onclick="root.deploy('BasicJig')">Deploy</button>
+            <button onclick="root.upgrade(LIN_BaseJig)">Upgrade</button>
+            <pre id="BasicJig"></pre>
+        </div>
+        <hr>
+        <div class="jigclass">
+            <h3>LIN_BucketContract</h3>
+            <button onclick="root.deploy('LIN_BucketContract')">Deploy</button>
+            <pre id="LIN_BucketContract"></pre>
+        </div>
+        <hr>
+        <div class="jigclass">
+            <h3>LIN_LicenseContract</h3>
+            <button onclick="root.deploy('LIN_LicenseContract')">Deploy</button>
+            <pre id="LIN_LicenseContract"></pre>
+        </div>
+        <hr>
+        <div class="jigclass">
+            <h3>Inventory</h3>
+            <button onclick="root.syncInv()">Sync</button>
+            <pre id="Inventory"></pre>
+        </div>
+
+    </body>
+    <script src="../js/bsv.browser.min.js"></script>
+    <script src="../js/run.browser.min.js"></script>
+    <script src="../run/licenseinrun.js"></script>
+    <script>
+
+        
+
+        function main() {
+            let jigs = [];
+            const run = new Run({ 
+                // app: "XxxMmYyyyy",
+                debug: true,
+                network: 'mock',
+                network: 'test',
+                owner: "cT5J6g3m3rN8dNP3T1DHPQY9rFgQgjbJjygfzmm21gnyEeYABcv6",
+                purse: "cPEviYEApSrcET5D5aWtGMXMqXAtHsWYpQTYHPkrUjvCYdt4pJ9p",
+                logger: console,
+             })
+             console.log(run.owner)
+             console.log(run.purse)
+             run.trust("*");
+
+             async function _updateBalance(){
+                let bal = await run.purse.balance();
+                const ownerHtml = `Address: ${run.owner.address}<br>Balance: ${bal}`;
+                document.getElementById("owner").innerHTML = ownerHtml
+             }
+             
+             
+             
+             this.syncInv = async () => {
+                await run.inventory.sync();
+                console.log(run.inventory.jigs)
+                jigs = run.inventory.jigs.slice();
+                document.getElementById("Inventory").innerHTML = jigs.toString()
+             }
+
+             async function _deployClass(classRef){
+                const dp = run.deploy(classRef);
+                await dp.sync();
+                console.log("deployClass", dp, dp.origin);
+                return dp;
+             }
+
+             this.upgrade = async (classRef,b,c) => {
+                 console.log(classRef,b,c)
+                 var oldLoc = window.prompt("Type previous class location:");
+                 if (!oldLoc) retur;
+                const OldClass = await run.load(oldLoc)
+                const NewClass = classRef;
+                Object.assign(NewClass, OldClass);
+                // Copy over existing state
+                
+                // Except the bindings, which are set by Run
+                ['origin', 'location', 'nonce', 'owner', 'satoshis'].forEach(x => { 
+                    // console.log(x)
+                    delete NewClass[x] 
+                })
+                console.log("Old", OldClass)
+                console.log("New", NewClass, NewClass.origin, NewClass.location)
+                OldClass.upgrade(NewClass)
+                // await OldClass.sync()
+                // await run.sync();
+                // const html = `ORIGIN: ${OldClass.origin}<br>LOCATION: ${OldClass.location}<br>OWNER: ${OldClass.owner}<br><br>`;
+                // document.getElementById(jigId).innerHTML = html
+                console.log("UPGRADED", OldClass);
+                return OldClass;
+             }
+
+             this.deploy = async (jigId) => {
+                console.log("deploy2", jigId)
+                let dp;
+                switch(jigId){
+                    case "BasicJig": 
+                        dp = await _deployClass(LIN_BaseJig);
+                        break;
+                    case "LIN_BucketContract": 
+                        dp = await _deployClass(LIN_BucketContract);
+                        break;
+                    case "LIN_LicenseContract": 
+                        dp = await _deployClass(LIN_LicenseContract);
+                        break;
+                }
+                // await dp.sync();
+                await run.sync();
+                const html = `ORIGIN: ${dp.origin}<br>LOCATION: ${dp.location}<br>OWNER: ${dp.owner}<br><br>${dp.toString()}`;
+                let el = document.getElementById(jigId).innerHTML = html
+                console.log("DEPLOYED", dp, el);
+             }
+
+            //  const jig = new BasicJig({name:"MLs", title:"MLSss", description: "MLssssss"})
+            //  console.log(jig);
+            //  await jig.sync();
+            //  console.log(jig);
+
+            this.syncInv();
+            _updateBalance();
+
+        }
+        const root = new main()
+    </script>
+</html>
